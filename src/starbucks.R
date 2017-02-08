@@ -171,7 +171,7 @@ df2<-(sqldf("select zipcode,year,incomestate,
                  group by zipcode,year,incomestate"))
 
 df3<-inner_join(df1,df2,by=c("zipcode","YEAR","IncomeState"))
-
+#tag zipcodes where there is no starbucks
 df3$has_starbucks<-df3$storecount.x > 0
 
 
