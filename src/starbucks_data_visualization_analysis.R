@@ -29,6 +29,7 @@ arrange(position)%>%
 #dfmelt<-melt(df3,measure.vars=15:20)%>%filter(YEAR==2014)%>%
 select(one_of(c("variable", "value","has_starbucks","bucket")))
 
+#boxplot the data to see how the data is distributed among various dimensions
 dfmelt$bucketf = factor(dfmelt$bucket,levels=c("75,000 under 100,000","100,000 under 200,000","200,000 or more"))
 
 ggplot(dfmelt,  aes(x=has_starbucks, y=value,fill=bucket))+
@@ -36,8 +37,5 @@ ggplot(dfmelt,  aes(x=has_starbucks, y=value,fill=bucket))+
   #facet_grid(.~bucket)
   facet_grid(.~bucketf)
 ggplotly()
-
-
-
 
 
