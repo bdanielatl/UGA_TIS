@@ -36,7 +36,7 @@ dfmelt$bucketf = factor(dfmelt$bucket,levels=c("75,000 under 100,000","100,000 u
 
 ggplot(dfmelt,  aes(x=has_starbucks, y=value,fill=bucket))+
   geom_boxplot()+
-  geom_point(aes(text=paste("zipcode:",zipcode)))+
+#  geom_point(aes(text=paste("zipcode:",zipcode)))+
   #facet_grid(.~bucket)
   facet_grid(.~bucketf)
 #ggplotly()
@@ -64,7 +64,7 @@ dfNewLocationList<-melt(df3,measure.vars=7:12)%>%
   filter(paste0(variable,zipcode) %in% paste0(dfnewzips$variable,dfnewzips$zipcode))
 
 #data quality check: google results show over 2000 zipcodes in New York; 692 of them could be new starbucks locations
-View(sqldf("select sum(distinct total_income) as total_income,sum(distinct total_returns_filed) as total_returns_filed,
+(sqldf("select sum(distinct total_income) as total_income,sum(distinct total_returns_filed) as total_returns_filed,
 count(distinct zipcode) as num_zip_codes,IncomeState from dfNewLocationList
       group by incomestate order by sum(distinct total_income) desc"))
 
