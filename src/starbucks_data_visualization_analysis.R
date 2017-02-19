@@ -64,8 +64,33 @@ dfNewLocationList<-melt(df3,measure.vars=7:12)%>%
   filter(paste0(variable,zipcode) %in% paste0(dfnewzips$variable,dfnewzips$zipcode))
 
 #data quality check: google results show over 2000 zipcodes in New York; 692 of them could be new starbucks locations
-(sqldf("select sum(distinct total_income) as total_income,sum(distinct total_returns_filed) as total_returns_filed,
+results<-sqldf("select sum(distinct total_income) as total_income,sum(distinct total_returns_filed) as total_returns_filed,
 count(distinct zipcode) as num_zip_codes,IncomeState from dfNewLocationList
-      group by incomestate order by sum(distinct total_income) desc"))
+               group by incomestate order by sum(distinct total_income) desc")
+
+#print results
+results
+
+
+#scatter plot results
+ggplot(results,aes(x=total_income,y=total_returns_filed,label=IncomeState)) + 
+  geom_point() + geom_text(aes(label=IncomeState),hjust=0,vjust=0)
+
+
+##plot results on a map
+data(state)
+statename<-as.data.frame(cbind(state.abb,tolower(state.name)))
+newresults<-inner_join(results,statename,by=c("IncomeState" = "state.abb"))
+
+newresults<-merge(newresults,map_data("state"), by.x='V2', by.y='region')
+
+p <- ggplot()
+p <- p + geom_polygon(data=newresults, aes(x=long, y=lat, group = group, fill=newresults$total_income),
+                      colour="lightgreen"
+) + scale_fill_continuous(low = "thistle2", high = "darkgreen", guide="colorbar")
+
+P1 <- p + theme_bw()  + labs(fill = "States where Starbucks Should Focus Exapansion" 
+                             ,title = "States where Starbucks Should Focus Exapansion", x="", y="")
+P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border =  element_blank())
 
 
