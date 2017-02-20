@@ -1,6 +1,8 @@
 ---
 title: "Where should starbucks go next?"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 # Intro
 Starbucks is one of the best known brands in the world with thousands of locations.  There are still zipcodes in the United States without a way to get your hyper-caffienated-four-dollar fix.  Can we use data to make an informed decision about where Starbucks could expand next?
@@ -21,7 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## The Data Loading Code
 
-```{r echo=TRUE, eval=TRUE, results="hide", message=FALSE}
+```{r echo=TRUE, eval=TRUE,  message=FALSE}
 library(readxl)
 library(readr)
 library(sqldf)
@@ -37,7 +39,7 @@ library(plotly)
 
 #clean up all variables before running from the top
 rm(list=ls(all=TRUE))
-
+#load up the zipcode data to lean the data
 data(zipcode)
 
 #read in the startbucks data
@@ -50,8 +52,14 @@ starbuckslocations$Zip = clean.zipcodes(starbuckslocations$Zip)
 #create a 5 character zip column 
 starbuckslocations$zip_five <-substr(starbuckslocations$Zip,1,5)
 
+#summarize the number of stores by zipcode
 starbuckslocations<-sqldf("select count(*) as storecount,State,zip_five from starbuckslocations 
                           group by State,zip_five")
+
+knitr::kable(head(starbuckslocations,10))
+```
+
+```{r echo=TRUE}
 
 #View(sqldf("select * from starbuckslocations"))
 #how many starbucks are in each state?
@@ -103,6 +111,8 @@ rm(Income2013)
 
 IncomeData$zipcode<-as.character(IncomeData$zipcode)
 
+
+#join the zip code data and the starbucks locaiton data by the cleaned up zipcode column.
 all_data<-full_join(IncomeData,starbuckslocations,by=c("zipcode"="zip_five"),copy=TRUE)
 
 #data quality check: count the numbe of total observations
@@ -177,10 +187,10 @@ names(return_count)[12]<-"agi_six_nt"
 ```
 
 ### Data Slices
-```{r eval=TRUE}
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
 library(xtable)
 
-
+#datatable looking at income data and the total AGI for each zipcode
 
 df1<-(sqldf("select zipcode,year,incomestate, 
                  sum(agi_one_income)+sum(agi_two_income)+sum(agi_three_income)
@@ -195,10 +205,12 @@ df1<-(sqldf("select zipcode,year,incomestate,
                  from income_data 
                  group by zipcode,year,incomestate"))
 
-head(df1,10)
+knitr::kable(head(df1,10))
 ```
 
-```{r}
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
+#number of tax returns filed for each income bucket
+
 df2<-(sqldf("select zipcode,year,incomestate, 
                  sum(agi_one_nt)+sum(agi_two_nt)+sum(agi_three_nt)
                   +sum(agi_four_nt)+sum(agi_five_nt)+sum(agi_six_nt) as total_nt, 
@@ -211,18 +223,20 @@ df2<-(sqldf("select zipcode,year,incomestate,
                  sum(agi_six_nt) as nt_six
                  from return_count 
                  group by zipcode,year,incomestate"))
-head(df2,10)
+knitr::kable(head(df2,10))
 ```
 
-```{r}
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
+#join the two datasets on income and store cout
+#tag the rows where there are zip cods and storecount is 0
 df3<-inner_join(df1,df2,by=c("zipcode","YEAR","IncomeState"))
-#tag zipcodes where there is no starbucks
+#tag zipcodes where there is no starbucks store
 df3$has_starbucks<-df3$storecount.x > 0
-
-head(df3,10)
+#print a sample of the data
+knitr::kable(head(df3,10))
 ```
 
-```{r}
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
 #this is just for formatting and creating a legend
 # 1 = $1 under $25,000
 # 2 = $25,000 under $50,000
@@ -240,24 +254,43 @@ dflegend<-data.frame(label,bucket,position,stringsAsFactors = FALSE)
 ##The Analysis Code
 Starbucks tends to target more affluent areas, or households filing in the upper buckets of our data distribution. This analysis will look at agi buckets four through six for 2014.
 
-```{r}
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
 #change the shape of the data before we plot and analyze
 dfmeltbase<-melt(df3,measure.vars=7:12)%>%filter(YEAR==2014 & variable %in% c("agi_four", "agi_five","agi_six"))
 
 head(dfmeltbase,10)
 
 ```
+Look at the difference between the two tables below and it should be appearant what the melt function has done.
 
-Let's box plot and compare the two types of zip codes (those having vs. those lacking a Starbucks).
-```{r}
+BEFORE melt
+```{r echo=TRUE,eval=TRUE}
+knitr::kable(head(df3,10))
+```
+
+AFTER melt: the agi column names have now become rows. This allows for pivotting the data into the right shape.
+```{r echo=TRUE, eval=TRUE}
+knitr::kable(head(dfmeltbase,10))
+```
+
+Box plot and compare the two types of zip codes (those having vs. those lacking a Starbucks).
+
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
+#join the melted data and legend, sort the data by the position of the labels in the legend.
 dfmelt<-  inner_join(dfmeltbase, dflegend,by=c("variable" = "label"))%>%
 arrange(position)%>%
-#number of returns in each bucket
-#dfmelt<-melt(df3,measure.vars=15:20)%>%filter(YEAR==2014)%>%
 select(one_of(c("variable", "value","has_starbucks","bucket","zipcode","IncomeState")))
 
+
 #boxplot the data to see how the data is distributed among various dimensions
+#this line is going to subdivide the data (income, number of returns etc into different levels that 
+#can be evaluated indepenently.  This will become apparent boxplot.)
 dfmelt$bucketf = factor(dfmelt$bucket,levels=c("75,000 under 100,000","100,000 under 200,000","200,000 or more"))
+```
+
+For easier following of this code chunk, look at the table immeidately above and follow where the column names fall into the function parameters
+```{r echo=TRUE}
+knitr::kable(head(dfmelt,10))
 
 ggplot(dfmelt,  aes(x=has_starbucks, y=value,fill=bucket))+
   geom_boxplot()+
@@ -268,21 +301,24 @@ ggplot(dfmelt,  aes(x=has_starbucks, y=value,fill=bucket))+
 ```
 
 Now let's take a percentile of zip codes without a starbucks and those that are above the 75th percentile in income could qualify for expansion.
-```{r}
-dfmedian<-  inner_join(dfmeltbase, dflegend,by=c("variable" = "label"))
+```{r echo=TRUE, eval=TRUE, results="show", message=FALSE}
+
+
+dfntile<-  inner_join(dfmeltbase, dflegend,by=c("variable" = "label"))
 
 #df %>% group_by(a) %>% summarise_each(funs(sum)) the line below was adapted from this line 
 ##this line is very powerful, what it is doing is grouping by each bucket and then for each one
-##finding the median. YOU CANNOT DO THIS NATIVELY IN SQL OR ON LIGHTER SQL PLATFORMS BECAUSE
-##FINDING THE MEIDAIN INVOLVES SORTING THE DATA. R does this inherently; median could be replaced
+##finding the given percentile. YOU CANNOT DO THIS NATIVELY IN SQL OR ON LIGHTER SQL PLATFORMS BECAUSE
+##FINDING THE N-TILE INVOLVES SORTING THE DATA. R does this inherently; quantile could be replaced
 ##with any other analytic function.
-dfresult<-dfmedian %>% group_by(bucket) %>% summarise(med_val=(quantile(value,.75)))
+dfresult<-dfntile %>% group_by(bucket) %>% summarise(ntile_val=(quantile(value,.75)))
+
 
 #join the dfmelt "table" with the dfresult table and get all zip codes without starbucks for each bucket
-#that have a gross reported income of at least the median or more
+#that have a gross reported income of at least the ntile value or more (NOTE: this can be made dynamic)
 
 dfnewzips<-inner_join (dfmelt,dfresult,by=c("bucket"))%>%
-  filter(value >= med_val & has_starbucks==FALSE)%>%select(one_of(c("variable","bucket", "value","med_val","zipcode","IncomeState")))%>%
+  filter(value >= ntile_val & has_starbucks==FALSE)%>%select(one_of(c("variable","bucket", "value","ntile_val","zipcode","IncomeState")))%>%
   arrange(desc(value))
 
 dfNewLocationList<-melt(df3,measure.vars=7:12)%>%
@@ -294,5 +330,38 @@ results<-sqldf("select sum(distinct total_income) as total_income,sum(distinct t
 count(distinct zipcode) as num_zip_codes,IncomeState from dfNewLocationList
       group by incomestate order by sum(distinct total_income) desc")
 
-results
+knitr::kable(results)
 ```
+
+##Data Visuzliation
+Visualizing the data can allow us to see how different states and markets relate to each other with respect to income and population.  The first example is a scatter plot of states; the reference lines mark the 75th percentile of income and population.
+
+```{r echo=TRUE}
+#plot the income by population with a reference line to show the 75th percentile of income
+ggplot
+ggplot(results,aes(x=total_income,y=total_returns_filed,label=IncomeState)) + 
+  geom_point() + geom_text(aes(label=IncomeState),hjust=0,vjust=0)+geom_vline(xintercept = quantile(results$total_income,.75)) + geom_hline(yintercept = quantile(results$total_returns_filed,.75))
+```
+
+Another way to visualize the data is through mapping.  State boundary data with lat-long coordiantes are built into the state R package.  Joining lat-long data to the state names in the state result dataset enables plotting in ggplot to render a map of the United States with state boundaries filled in where expansion opportunities are the greatest.  Compare this map with the scatter plot shown above.
+
+```{r echo=TRUE, fig.width=11,fig.height=5}
+data(state)
+statename<-as.data.frame(cbind(state.abb,tolower(state.name)))
+newresults<-inner_join(results,statename,by=c("IncomeState" = "state.abb"))
+
+newresults<-merge(newresults,map_data("state"), by.x='V2', by.y='region')
+
+
+
+p <- ggplot()
+p <- p + geom_polygon(data=newresults, aes(x=long, y=lat, group = group, fill=newresults$total_income),
+                      colour="lightgreen"
+) + scale_fill_continuous(low = "thistle2", high = "darkgreen", guide="colorbar")
+
+P1 <- p + theme_bw()  + labs(fill = "AGI" 
+                             ,title = "AGI", x="", y="")
+P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border =  element_blank())
+
+```
+
