@@ -1,5 +1,5 @@
 ---
-title: "Where should starbucks go next?"
+title: "Where Should Starbucks Go Next?"
 output:
   html_document: default
   pdf_document: default
