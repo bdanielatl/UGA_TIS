@@ -360,7 +360,7 @@ p <- p + geom_polygon(data=newresults, aes(x=long, y=lat, group = group, fill=ne
 ) + scale_fill_continuous(low = "thistle2", high = "darkgreen", guide="colorbar")
 
 P1 <- p + theme_bw()  + labs(fill = "AGI" 
-                             ,title = "AGI", x="", y="")
+                             ,title = "AGI by State for Starbucks Expansion", x="", y="")
 P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border =  element_blank())
 
 ```
